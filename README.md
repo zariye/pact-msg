@@ -8,6 +8,12 @@ The checkout-service produces orders and sends them to a queue. These orders are
 customerId and the billing-services sums up the prices of the individual items.
 The second service is the fulfilment-service which is able to consume orders.
 
-Message passing is done via [Testcontainers](https://www.testcontainers.org/) which provides a mock for Amazon's Simple Queueing Service (SQS). 
+Message passing is done via [Testcontainers](https://www.testcontainers.org/) which provides a mock for Amazon's Simple Queueing Service (SQS).
 
 ![Conceptual drawing](drawing.png)
+
+# Configure docker client
+
+To run test container on mac, the docker client needs a volume mount added as such:
+
+`/Users/<name>/Library/Containers/com.docker.docker/`

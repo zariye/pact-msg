@@ -27,3 +27,6 @@ class CheckoutService(private val sqs: AmazonSQS, private val queueUrl: String, 
     fun createSqsMessage(order: Order) =
         SendMessageRequest(queueUrl, mapper.writeValueAsString(order))
 }
+
+
+

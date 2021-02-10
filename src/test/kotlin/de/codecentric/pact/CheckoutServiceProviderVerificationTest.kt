@@ -1,30 +1,46 @@
 package de.codecentric.pact
 
-import au.com.dius.pact.model.Interaction
-import au.com.dius.pact.model.Pact
+import au.com.dius.pact.core.model.Interaction
+import au.com.dius.pact.core.model.Pact
 import au.com.dius.pact.provider.PactVerifyProvider
-import au.com.dius.pact.provider.junit.Provider
-import au.com.dius.pact.provider.junit.loader.PactFolder
-import au.com.dius.pact.provider.junit5.AmpqTestTarget
+import au.com.dius.pact.provider.junit5.MessageTestTarget
 import au.com.dius.pact.provider.junit5.PactVerificationContext
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider
-import com.amazonaws.services.sqs.AmazonSQS
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import au.com.dius.pact.provider.junitsupport.Provider
+import au.com.dius.pact.provider.junitsupport.State
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import de.codecentric.pact.checkout.CheckoutService
 import de.codecentric.pact.checkout.Item
 import de.codecentric.pact.checkout.Order
-import de.codecentric.pact.checkout.CheckoutService
-import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestTemplate
 import org.junit.jupiter.api.extension.ExtendWith
-import java.util.Collections
+import org.testcontainers.containers.localstack.LocalStackContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import java.util.*
 
+@Testcontainers
 @Provider("checkout-service")
 @PactFolder("pacts")
 class CheckoutServiceProviderVerificationTest {
 
-    private val sqs: AmazonSQS = mockk()
-    private val objectMapper = jacksonObjectMapper()
+    companion object {
+        @JvmStatic
+        @Container
+        val localstack: LocalStackContainer = LocalStackContainer(). // deprecated, but ok as this might get the real queue
+        withServices(LocalStackContainer.Service.SQS)
+
+        val sqsContainer by lazy { SQSHelper.setupSQSTestcontainer(localstack) }
+        val sqsClient by lazy { sqsContainer.first }
+        val queueUrl by lazy { sqsContainer.second }
+        val objectMapper = ObjectMapper()
+            .registerModule(KotlinModule())
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    }
 
     @TestTemplate
     @ExtendWith(PactVerificationInvocationContextProvider::class)
@@ -35,12 +51,17 @@ class CheckoutServiceProviderVerificationTest {
 
     @BeforeEach
     fun before(context: PactVerificationContext) {
-        context.target = AmpqTestTarget(Collections.emptyList())
+        context.target = MessageTestTarget(Collections.emptyList())
+    }
+
+    @State("customer exists") // Must match the state description in the pact file
+    fun someProviderState() {
+        println("***********************")
     }
 
     @PactVerifyProvider("an order to export")
     fun anOrderToExport(): String? {
-        val checkoutService = CheckoutService(sqs, "localhost", objectMapper)
+        val checkoutService = CheckoutService(sqsClient, queueUrl, objectMapper)
         val order = Order(
             listOf(
                 Item("A secret machine", 1559),
@@ -52,3 +73,4 @@ class CheckoutServiceProviderVerificationTest {
         return checkoutService.createSqsMessage(order).messageBody
     }
 }
+

@@ -1,27 +1,20 @@
 package de.codecentric.pact
 
 import assertk.assertThat
-import assertk.assertions.isInstanceOf
-import assertk.assertions.isNotEmpty
 import assertk.assertions.isSuccess
 import au.com.dius.pact.consumer.MessagePactBuilder
-import au.com.dius.pact.consumer.Pact
-import au.com.dius.pact.consumer.PactFolder
+import au.com.dius.pact.consumer.dsl.LambdaDsl.newJsonBody
 import au.com.dius.pact.consumer.junit5.PactConsumerTestExt
 import au.com.dius.pact.consumer.junit5.PactTestFor
 import au.com.dius.pact.consumer.junit5.ProviderType
-import au.com.dius.pact.model.v3.messaging.Message
-import au.com.dius.pact.model.v3.messaging.MessagePact
+import au.com.dius.pact.core.model.annotations.Pact
+import au.com.dius.pact.core.model.annotations.PactFolder
+import au.com.dius.pact.core.model.messaging.MessagePact
 import cloud.localstack.docker.annotation.LocalstackDockerProperties
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import de.codecentric.pact.fulfillment.FulfillmentHandler
-import de.codecentric.pact.fulfillment.FulfillmentItem
-import io.pactfoundation.consumer.dsl.LambdaDsl.newJsonBody
-import io.pactfoundation.consumer.dsl.newObject
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -54,9 +47,9 @@ class FulfillmentServiceConsumerContractTest {
 
     @Test
     @PactTestFor(pactMethod = "exportAnOrder")
-    fun testExportAnOrder(message: Message) {
+    fun testExportAnOrder(message: MessagePact) {
             assertThat {
-                fulfillmentHandler.handleRequest(message.contents!!.valueAsString())
+                fulfillmentHandler.handleRequest(message.messages.first().contentsAsString())
             }.isSuccess()
     }
 }
